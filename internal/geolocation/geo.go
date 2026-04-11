@@ -22,7 +22,7 @@ func GetHostIP(r *http.Request) string {
 
 	var ip string
 
-	xff := r.Header.Get("X-Forwarded-First")
+	xff := r.Header.Get("X-Forwarded-For")
 	if xff != "" {
 		parts := strings.Split(xff,",")
 		ip = strings.TrimSpace(parts[0])
