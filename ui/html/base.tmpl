@@ -1,0 +1,30 @@
+{{/* ui/html/base.tmpl */}}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{block "title" .}}Weather App{{end}}</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+</head>
+<body>
+
+<header>
+    <h1>{{.Title}}</h1>
+</header>
+
+<nav>
+    <a href="/">Current Atmosphere</a>
+    <a href="/consultspace">Consult the Space</a>
+</nav>
+
+<main>
+    {{block "content" .}}{{end}}
+</main>
+
+<footer>
+    <p>© 2026 Zelnesh</p>
+</footer>
+
+</body>
+</html>

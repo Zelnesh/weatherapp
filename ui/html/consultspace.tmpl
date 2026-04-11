@@ -1,0 +1,21 @@
+{{define "content"}}
+
+<div class="weather-box">
+
+    <form class="form-panel"
+          autocomplete="off"
+          hx-post="/consultspace"
+          hx-target="#weather-result"
+          hx-swap="innerHTML">
+
+        <input type="text" name="country" placeholder="Country" required>
+        <input type="text" name="city" placeholder="City" required>
+
+        <button type="submit">Consult</button>
+    </form>
+
+    <div id="weather-result"></div>
+
+</div>
+
+{{end}}

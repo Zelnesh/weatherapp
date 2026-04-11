@@ -1,0 +1,219 @@
+/* ================= Header ================= */
+header {
+    text-align: center;
+    font-size: 3rem;
+    font-weight: bold;
+    color: #ffffff;
+    text-shadow:
+    0 0 10px #ff00ff,
+    0 0 20px #ff00ff,
+    0 0 30px #ff00ff;
+    padding: 2rem 0;
+}
+
+
+/* ================= Navigation ================= */
+nav {
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 15px 20px;
+
+    background: rgba(0, 0, 0, 0.35);
+    border-radius: 10px;
+
+    backdrop-filter: blur(6px);
+}
+
+/* Navigation links */
+nav a {
+    text-decoration: none;
+    font-size: 1.3rem;
+    font-weight: bold;
+    color: #c8faff;
+
+    text-shadow:
+    0 0 5px #00ffff,
+    0 0 10px #00ffff;
+
+    transition: all 0.3s ease;
+}
+
+/* Hover effect */
+nav a:hover {
+    color: #ffffff;
+    text-shadow:
+    0 0 10px #00ffff,
+    0 0 20px #00ffff,
+    0 0 30px #00ffff;
+
+    transform: translateX(5px);
+}
+
+
+/* ================= Main background ================= */
+body {
+    margin: 0;
+    padding: 0;
+    font-family: Arial, Helvetica, sans-serif;
+
+    background: url('/static/img/SeasonOfCycelAndWonders.png')
+    no-repeat center center fixed;
+
+    background-size: cover;
+    color: #fff;
+}
+
+
+/* ================= Weather Container ================= */
+.weather-box {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 25px;
+
+    margin-top: 5rem;
+
+    text-align: center;
+    font-size: 3rem;
+    font-weight: bold;
+    color: #ffffff;
+
+    text-shadow:
+    0 0 10px #00ffff,
+    0 0 20px #00ffff,
+    0 0 30px #00ffff;
+
+    animation: pulseGlow 2s infinite alternate;
+}
+
+/* Optional smaller subtext */
+.weather-box span {
+    display: block;
+    font-size: 1.5rem;
+    margin-top: 0.5rem;
+    color: #aaffff;
+    text-shadow: 0 0 5px #00ffff;
+}
+
+
+/* ================= Glow Animation ================= */
+@keyframes pulseGlow {
+    0% {
+        text-shadow:
+        0 0 5px #00ffff,
+        0 0 10px #00ffff,
+        0 0 15px #00ffff;
+    }
+    50% {
+        text-shadow:
+        0 0 10px #00ffff,
+        0 0 20px #00ffff,
+        0 0 30px #00ffff;
+    }
+    100% {
+        text-shadow:
+        0 0 15px #00ffff,
+        0 0 30px #00ffff,
+        0 0 45px #00ffff;
+    }
+}
+
+
+/* ================= Footer ================= */
+footer {
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+    text-align: center;
+    padding: 1rem 0;
+    font-size: 1rem;
+    color: #ffffff;
+
+    background-color: rgba(0, 0, 0, 0.3);
+    text-shadow: 0 0 5px #00ffff;
+}
+
+
+/* ================= Lovecraftian Form ================= */
+.form-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+
+    padding: 20px 25px;
+
+    background: rgba(0, 0, 0, 0.35);
+    border-radius: 10px;
+    backdrop-filter: blur(6px);
+}
+
+
+/* ================= Inputs ================= */
+.form-panel input {
+    padding: 10px;
+    font-size: 1rem;
+    border: none;
+    border-radius: 5px;
+
+    background: rgba(0,0,0,0.4);
+    color: #c8faff;
+
+    text-shadow: 0 0 5px #00ffff;
+}
+
+
+/* Fix blurry placeholder */
+.form-panel input::placeholder {
+    color: #a8faff;
+    opacity: 1;
+    text-shadow: 0 0 5px #00ffff;
+}
+
+
+/* ================= Button ================= */
+.form-panel button {
+    padding: 10px;
+    border: none;
+    border-radius: 5px;
+
+    background: rgba(0,0,0,0.4);
+    color: #c8faff;
+
+    font-weight: bold;
+    cursor: pointer;
+
+    text-shadow:
+    0 0 5px #00ffff,
+    0 0 10px #00ffff;
+
+    transition: all 0.3s ease;
+}
+
+.form-panel button:hover {
+    text-shadow:
+    0 0 10px #00ffff,
+    0 0 20px #00ffff;
+
+    transform: translateX(3px);
+}
+
+
+/* ================= HTMX Result Animation ================= */
+#weather-result {
+animation: fadeIn 0.6s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
