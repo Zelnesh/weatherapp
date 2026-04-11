@@ -34,6 +34,9 @@ func (app *application) home(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal Server Error...", 500)
 	}
 
+	app.logInfo.Printf("IP home page: %v", ip)
+	app.logInfo.Printf("Geo home page: %+v", geolocation)
+
 	currentWeather, err := weather.GetCurrentWeather(geolocation.Latitude, geolocation.Longitude)
 	if err != nil {
 		app.logError.Printf("Failed to retreive current weather: %v", err)
@@ -133,6 +136,7 @@ func (app *application) consultSpacePOST(w http.ResponseWriter, r *http.Request)
 
 
 	geocodingData, err := geocoding.GetGeocoding(city,country)
+	app.logInfo.Printf("Geocoding form: %+v", geocodingData.Results[0])
 
 	if len(geocodingData.Results) == 0{
 		wrongCity := "City not found, please enter a valid city..."
@@ -152,6 +156,7 @@ func (app *application) consultSpacePOST(w http.ResponseWriter, r *http.Request)
 
 
 	currentWeather, err := weather.GetCurrentWeather(geocodingData.Results[0].Latitude, geocodingData.Results[0].Longitude)
+	app.logInfo.Printf("CurrentWeather form: %+v", currentWeather)
 
 
 	data := struct{
