@@ -112,10 +112,12 @@ func GetCurrentWeather(latitude, longitude float64) (*WeatherResponse, error) {
 	}
 
 	// Store success
-	weatherCache[key] = &CacheWeather{
-		Data:      &weather,
-		ExpiresAt: time.Now().Add(10 * time.Minute),
-		Error:     false,
+	if staleData != nil {
+		weatherCache[key] = &CacheWeather{
+			Data:      staleData,
+			ExpiresAt: time.Now().Add(5 * time.Minute),
+			Error:     true,
+		}
 	}
 
 	return &weather, nil
