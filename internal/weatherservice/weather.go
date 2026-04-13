@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"sync"
 	"time"
 )
 
@@ -21,7 +22,10 @@ type CacheWeather struct {
 	Error     bool
 }
 
-var weatherCache = map[string]*CacheWeather{}
+var (
+	weatherCache = map[string]*CacheWeather{}
+	mu           sync.RWMutex
+)
 
 func cacheKey(latitude, longitude float64) string {
 	return fmt.Sprintf("%.2f:%.2f", latitude, longitude)
@@ -29,31 +33,33 @@ func cacheKey(latitude, longitude float64) string {
 
 func GetCurrentWeather(latitude, longitude float64) (*WeatherResponse, error) {
 
-	// Avoid invalid coordinates (0,0)
+	// Fix invalid coords (Render health checks)
 	if latitude == 0 && longitude == 0 {
-		return nil, fmt.Errorf("invalid coordinates")
+		latitude = 52.406822
+		longitude = -1.519693
 	}
 
 	key := cacheKey(latitude, longitude)
 
-	// Check cache first
-	if cached, ok := weatherCache[key]; ok {
+	// ---------- CACHE READ ----------
+	mu.RLock()
+	cached, ok := weatherCache[key]
+	mu.RUnlock()
 
-		if time.Now().Before(cached.ExpiresAt) {
+	if ok && time.Now().Before(cached.ExpiresAt) {
 
-			// return stale data if error cached
-			if cached.Error && cached.Data != nil {
-				return cached.Data, nil
-			}
-
-			if cached.Error {
-				return nil, fmt.Errorf("cached weather error (temporary cooldown)")
-			}
-
+		if cached.Error && cached.Data != nil {
 			return cached.Data, nil
 		}
+
+		if cached.Error {
+			return nil, fmt.Errorf("cached weather error (cooldown active)")
+		}
+
+		return cached.Data, nil
 	}
 
+	// ---------- HTTP CALL ----------
 	url := fmt.Sprintf(
 		"https://api.open-meteo.com/v1/forecast?latitude=%.2f&longitude=%.2f&current=temperature_2m",
 		latitude,
@@ -74,8 +80,12 @@ func GetCurrentWeather(latitude, longitude float64) (*WeatherResponse, error) {
 	resp, err := client.Do(req)
 	if err != nil {
 
-		// fallback to stale cache
-		if cached, ok := weatherCache[key]; ok && cached.Data != nil {
+		// fallback to cache if available
+		mu.RLock()
+		cached, ok := weatherCache[key]
+		mu.RUnlock()
+
+		if ok && cached.Data != nil {
 			return cached.Data, nil
 		}
 
@@ -83,52 +93,53 @@ func GetCurrentWeather(latitude, longitude float64) (*WeatherResponse, error) {
 	}
 	defer resp.Body.Close()
 
-	// Handle API errors / rate limit
+	// ---------- ERROR HANDLING ----------
 	if resp.StatusCode != http.StatusOK {
 
-		var staleData *WeatherResponse
+		var stale *WeatherResponse
 
-		if cached, ok := weatherCache[key]; ok {
-			staleData = cached.Data
+		mu.RLock()
+		if c, ok := weatherCache[key]; ok {
+			stale = c.Data
 		}
+		mu.RUnlock()
 
+		mu.Lock()
 		weatherCache[key] = &CacheWeather{
-			Data:      staleData,
+			Data:      stale,
 			ExpiresAt: time.Now().Add(5 * time.Minute),
 			Error:     true,
 		}
+		mu.Unlock()
 
-		if staleData != nil {
-			return staleData, nil
+		if stale != nil {
+			return stale, nil
 		}
 
 		return nil, fmt.Errorf("weather API bad response: %s", resp.Status)
 	}
 
+	// ---------- SUCCESS ----------
 	var weather WeatherResponse
-
 	if err := json.NewDecoder(resp.Body).Decode(&weather); err != nil {
 		return nil, err
 	}
 
-	// Store success
-	if staleData != nil {
-		weatherCache[key] = &CacheWeather{
-			Data:      staleData,
-			ExpiresAt: time.Now().Add(5 * time.Minute),
-			Error:     true,
-		}
+	mu.Lock()
+	weatherCache[key] = &CacheWeather{
+		Data:      &weather,
+		ExpiresAt: time.Now().Add(10 * time.Minute),
+		Error:     false,
 	}
+	mu.Unlock()
 
 	return &weather, nil
 }
 
-// Warmup cache on service start
+// Warmup on startup
 func init() {
 	go func() {
 		time.Sleep(5 * time.Second)
-
-		// Coventry warmup
 		_, _ = GetCurrentWeather(52.406822, -1.519693)
 	}()
 }
