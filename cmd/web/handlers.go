@@ -37,16 +37,21 @@ func (app *application) home(w http.ResponseWriter, r *http.Request) {
 	app.logInfo.Printf("IP home page: %v", ip)
 	app.logInfo.Printf("Geo home page: %+v", geolocation)
 
-	currentWeather, err := weather.GetCurrentWeather(geolocation.Latitude, geolocation.Longitude)
+	currentWeather, err := weatherservice.GetCurrentWeather(geolocation.Latitude, geolocation.Longitude)
 	if err != nil {
 		app.logError.Printf("Failed to retreive current weather: %v", err)
 		http.Error(w, "Internal Server Error...", 500)
+		currentWeather= &weatherservice.WeatherResponse{
+			Current: weatherservice.WeatherCurrent{
+				Temperature: -999,
+			},
+		}
 
 	}
 
 	data := struct {
 		Title string
-		Weather *weather.WeatherResponse
+		Weather *weatherservice.WeatherResponse
 		City string
 		Continent string
 	}{
@@ -155,14 +160,14 @@ func (app *application) consultSpacePOST(w http.ResponseWriter, r *http.Request)
 	}
 
 
-	currentWeather, err := weather.GetCurrentWeather(geocodingData.Results[0].Latitude, geocodingData.Results[0].Longitude)
+	currentWeather, err := weatherservice.GetCurrentWeather(geocodingData.Results[0].Latitude, geocodingData.Results[0].Longitude)
 	app.logInfo.Printf("CurrentWeather form: %+v", currentWeather)
 
 
 	data := struct{
 		City string
 		Country string
-		Temperature *weather.WeatherResponse
+		Temperature *weatherservice.WeatherResponse
 	}{
 		City: geocodingData.Results[0].City,
 		Country: geocodingData.Results[0].Country,

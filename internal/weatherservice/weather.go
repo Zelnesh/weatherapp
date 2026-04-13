@@ -1,4 +1,4 @@
-package weather
+package weatherservice
 
 import (
 	"encoding/json"
@@ -18,9 +18,9 @@ type WeatherCurrent struct {
 type CacheWeather struct {
 	Data      *WeatherResponse
 	ExpiresAt time.Time
+	Error     bool
 }
 
-// key = "lat:lon"
 var weatherCache = map[string]*CacheWeather{}
 
 func cacheKey(latitude, longitude float64) string {
@@ -31,17 +31,21 @@ func GetCurrentWeather(latitude, longitude float64) (*WeatherResponse, error) {
 
 	key := cacheKey(latitude, longitude)
 
-	// 1. Check cache
 	if cached, ok := weatherCache[key]; ok {
 		if time.Now().Before(cached.ExpiresAt) {
+
+			if cached.Error {
+				return nil, fmt.Errorf("cached weather error (temporary cooldown)")
+			}
+
 			return cached.Data, nil
 		}
 	}
 
-	// 2. Build request
 	url := fmt.Sprintf(
 		"https://api.open-meteo.com/v1/forecast?latitude=%.2f&longitude=%.2f&current=temperature_2m",
-		latitude, longitude,
+		latitude,
+		longitude,
 	)
 
 	client := &http.Client{
@@ -62,19 +66,25 @@ func GetCurrentWeather(latitude, longitude float64) (*WeatherResponse, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
+
+		weatherCache[key] = &CacheWeather{
+			Data:      nil,
+			ExpiresAt: time.Now().Add(2 * time.Minute), // short cooldown
+			Error:     true,
+		}
+
 		return nil, fmt.Errorf("weather API bad response: %s", resp.Status)
 	}
 
-	// 3. Decode response
 	var weather WeatherResponse
 	if err := json.NewDecoder(resp.Body).Decode(&weather); err != nil {
 		return nil, err
 	}
 
-	// 4. Store in cache (per location)
 	weatherCache[key] = &CacheWeather{
 		Data:      &weather,
 		ExpiresAt: time.Now().Add(10 * time.Minute),
+		Error:     false,
 	}
 
 	return &weather, nil
