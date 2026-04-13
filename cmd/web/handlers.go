@@ -40,7 +40,6 @@ func (app *application) home(w http.ResponseWriter, r *http.Request) {
 	currentWeather, err := weatherservice.GetCurrentWeather(geolocation.Latitude, geolocation.Longitude)
 	if err != nil {
 		app.logError.Printf("Failed to retreive current weather: %v", err)
-		http.Error(w, "Internal Server Error...", 500)
 		currentWeather= &weatherservice.WeatherResponse{
 			Current: weatherservice.WeatherCurrent{
 				Temperature: -999,
