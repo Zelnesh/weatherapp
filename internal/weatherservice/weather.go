@@ -34,10 +34,10 @@ func GetCurrentWeather(latitude, longitude float64) (*WeatherResponse, error) {
 	// Check cache first
 	if cached, ok := weatherCache[key]; ok {
 
-		// If cache still valid
+		// Cache still valid
 		if time.Now().Before(cached.ExpiresAt) {
 
-			// If error cached, return stale data if exists
+			// Return stale data if error cached
 			if cached.Error && cached.Data != nil {
 				return cached.Data, nil
 			}
@@ -50,7 +50,6 @@ func GetCurrentWeather(latitude, longitude float64) (*WeatherResponse, error) {
 		}
 	}
 
-	// Try to fetch fresh data
 	url := fmt.Sprintf(
 		"https://api.open-meteo.com/v1/forecast?latitude=%.2f&longitude=%.2f&current=temperature_2m",
 		latitude,
@@ -80,7 +79,7 @@ func GetCurrentWeather(latitude, longitude float64) (*WeatherResponse, error) {
 	}
 	defer resp.Body.Close()
 
-	// Handle rate limit or API errors
+	// Handle API errors / rate limiting
 	if resp.StatusCode != http.StatusOK {
 
 		var staleData *WeatherResponse
@@ -91,7 +90,7 @@ func GetCurrentWeather(latitude, longitude float64) (*WeatherResponse, error) {
 
 		weatherCache[key] = &CacheWeather{
 			Data:      staleData,
-			ExpiresAt: time.Now().Add(10 * time.Minute), // longer cooldown
+			ExpiresAt: time.Now().Add(5 * time.Minute), // cooldown
 			Error:     true,
 		}
 
@@ -107,7 +106,7 @@ func GetCurrentWeather(latitude, longitude float64) (*WeatherResponse, error) {
 		return nil, err
 	}
 
-	// Store successful response
+	// Store success
 	weatherCache[key] = &CacheWeather{
 		Data:      &weather,
 		ExpiresAt: time.Now().Add(10 * time.Minute),
@@ -115,4 +114,14 @@ func GetCurrentWeather(latitude, longitude float64) (*WeatherResponse, error) {
 	}
 
 	return &weather, nil
+}
+
+// Warmup cache on service start
+func init() {
+	go func() {
+		time.Sleep(5 * time.Second)
+
+		// Coventry warmup
+		GetCurrentWeather(52.406822, -1.519693)
+	}()
 }
