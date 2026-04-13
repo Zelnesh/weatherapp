@@ -29,15 +29,19 @@ func cacheKey(latitude, longitude float64) string {
 
 func GetCurrentWeather(latitude, longitude float64) (*WeatherResponse, error) {
 
+	// Avoid invalid coordinates (0,0)
+	if latitude == 0 && longitude == 0 {
+		return nil, fmt.Errorf("invalid coordinates")
+	}
+
 	key := cacheKey(latitude, longitude)
 
 	// Check cache first
 	if cached, ok := weatherCache[key]; ok {
 
-		// Cache still valid
 		if time.Now().Before(cached.ExpiresAt) {
 
-			// Return stale data if error cached
+			// return stale data if error cached
 			if cached.Error && cached.Data != nil {
 				return cached.Data, nil
 			}
@@ -79,7 +83,7 @@ func GetCurrentWeather(latitude, longitude float64) (*WeatherResponse, error) {
 	}
 	defer resp.Body.Close()
 
-	// Handle API errors / rate limiting
+	// Handle API errors / rate limit
 	if resp.StatusCode != http.StatusOK {
 
 		var staleData *WeatherResponse
@@ -90,7 +94,7 @@ func GetCurrentWeather(latitude, longitude float64) (*WeatherResponse, error) {
 
 		weatherCache[key] = &CacheWeather{
 			Data:      staleData,
-			ExpiresAt: time.Now().Add(5 * time.Minute), // cooldown
+			ExpiresAt: time.Now().Add(5 * time.Minute),
 			Error:     true,
 		}
 
@@ -102,6 +106,7 @@ func GetCurrentWeather(latitude, longitude float64) (*WeatherResponse, error) {
 	}
 
 	var weather WeatherResponse
+
 	if err := json.NewDecoder(resp.Body).Decode(&weather); err != nil {
 		return nil, err
 	}
@@ -122,6 +127,6 @@ func init() {
 		time.Sleep(5 * time.Second)
 
 		// Coventry warmup
-		GetCurrentWeather(52.406822, -1.519693)
+		_, _ = GetCurrentWeather(52.406822, -1.519693)
 	}()
 }
