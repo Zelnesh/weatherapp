@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"sync"
 	"time"
+
+	"golang.org/x/sync/singleflight"
 )
 
 type WeatherResponse struct {
@@ -25,6 +27,7 @@ type CacheWeather struct {
 var (
 	weatherCache = map[string]*CacheWeather{}
 	mu           sync.RWMutex
+	sf           singleflight.Group
 )
 
 func cacheKey(latitude, longitude float64) string {
@@ -59,81 +62,99 @@ func GetCurrentWeather(latitude, longitude float64) (*WeatherResponse, error) {
 		return cached.Data, nil
 	}
 
-	// ---------- HTTP CALL ----------
-	url := fmt.Sprintf(
-		"https://api.open-meteo.com/v1/forecast?latitude=%.2f&longitude=%.2f&current=temperature_2m",
-		latitude,
-		longitude,
-	)
+	// ---------- SINGLEFLIGHT ----------
+	result, err, _ := sf.Do(key, func() (interface{}, error) {
 
-	client := &http.Client{
-		Timeout: 10 * time.Second,
-	}
-
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Set("User-Agent", "weather-app")
-
-	resp, err := client.Do(req)
-	if err != nil {
-
-		// fallback to cache if available
+		// Double check cache inside singleflight
 		mu.RLock()
 		cached, ok := weatherCache[key]
 		mu.RUnlock()
 
-		if ok && cached.Data != nil {
+		if ok && time.Now().Before(cached.ExpiresAt) {
 			return cached.Data, nil
 		}
 
-		return nil, err
-	}
-	defer resp.Body.Close()
+		url := fmt.Sprintf(
+			"https://api.open-meteo.com/v1/forecast?latitude=%.2f&longitude=%.2f&current=temperature_2m",
+		     latitude,
+		     longitude,
+		)
 
-	// ---------- ERROR HANDLING ----------
-	if resp.StatusCode != http.StatusOK {
-
-		var stale *WeatherResponse
-
-		mu.RLock()
-		if c, ok := weatherCache[key]; ok {
-			stale = c.Data
+		client := &http.Client{
+			Timeout: 10 * time.Second,
 		}
-		mu.RUnlock()
+
+		req, err := http.NewRequest("GET", url, nil)
+		if err != nil {
+			return nil, err
+		}
+
+		req.Header.Set("User-Agent", "weather-app")
+
+		resp, err := client.Do(req)
+		if err != nil {
+
+			// fallback to stale cache
+			mu.RLock()
+			cached, ok := weatherCache[key]
+			mu.RUnlock()
+
+			if ok && cached.Data != nil {
+				return cached.Data, nil
+			}
+
+			return nil, err
+		}
+		defer resp.Body.Close()
+
+		// ---------- ERROR HANDLING ----------
+		if resp.StatusCode != http.StatusOK {
+
+			var stale *WeatherResponse
+
+			mu.RLock()
+			if c, ok := weatherCache[key]; ok {
+				stale = c.Data
+			}
+			mu.RUnlock()
+
+			mu.Lock()
+			weatherCache[key] = &CacheWeather{
+				Data:      stale,
+			 ExpiresAt: time.Now().Add(5 * time.Minute),
+				Error:     true,
+			}
+			mu.Unlock()
+
+			if stale != nil {
+				return stale, nil
+			}
+
+			return nil, fmt.Errorf("weather API bad response: %s", resp.Status)
+		}
+
+		// ---------- SUCCESS ----------
+		var weather WeatherResponse
+		if err := json.NewDecoder(resp.Body).Decode(&weather); err != nil {
+			return nil, err
+		}
 
 		mu.Lock()
 		weatherCache[key] = &CacheWeather{
-			Data:      stale,
-			ExpiresAt: time.Now().Add(5 * time.Minute),
-			Error:     true,
+			Data:      &weather,
+			 ExpiresAt: time.Now().Add(10 * time.Minute),
+				Error:     false,
 		}
 		mu.Unlock()
 
-		if stale != nil {
-			return stale, nil
-		}
+		return &weather, nil
+	})
 
-		return nil, fmt.Errorf("weather API bad response: %s", resp.Status)
-	}
-
-	// ---------- SUCCESS ----------
-	var weather WeatherResponse
-	if err := json.NewDecoder(resp.Body).Decode(&weather); err != nil {
+	if err != nil {
 		return nil, err
 	}
 
-	mu.Lock()
-	weatherCache[key] = &CacheWeather{
-		Data:      &weather,
-		ExpiresAt: time.Now().Add(10 * time.Minute),
-		Error:     false,
-	}
-	mu.Unlock()
-
-	return &weather, nil
+	return result.(*WeatherResponse), nil
 }
 
 // Warmup on startup
