@@ -16,13 +16,29 @@ Check the weather while gazing into the abyss... and sometimes, the abyss gazes 
 
 ## 🧠 Tech Stack
 
-- Go (Golang)
-- HTML Templates
-- HTMX
-- CSS (Custom styling)
-- External APIs:
-  - Weather API
-  - Geocoding API
-  - IPWho.is (Geolocation)
+Backend
+
+Go (Golang)
+Go HTML Templates
+HTTP Server (net/http)
+______________________
+Frontend
+
+HTML Templates
+HTMX
+CSS (Custom Lovecraftian styling)
+______________________
+Performance & Concurrency
+
+In-memory caching
+sync.RWMutex (thread-safe cache access)
+singleflight (request deduplication)
+Rate-limit protection logic
+______________________
+External APIs
+
+Weather API (Open-Meteo)
+Geocoding API
+IPWho.is (Geolocation)
 
 
