@@ -34,6 +34,26 @@ func cacheKey(latitude, longitude float64) string {
 	return fmt.Sprintf("%.2f:%.2f", latitude, longitude)
 }
 
+// Retry with exponential backoff
+func fetchWithRetry(req *http.Request, client *http.Client) (*http.Response, error) {
+
+	var resp *http.Response
+	var err error
+
+	for i := 0; i < 3; i++ {
+
+		resp, err = client.Do(req)
+
+		if err == nil && resp.StatusCode != http.StatusTooManyRequests {
+			return resp, nil
+		}
+
+		time.Sleep(time.Duration(1<<i) * time.Second)
+	}
+
+	return resp, err
+}
+
 func GetCurrentWeather(latitude, longitude float64) (*WeatherResponse, error) {
 
 	// Fix invalid coords (Render health checks)
@@ -91,7 +111,7 @@ func GetCurrentWeather(latitude, longitude float64) (*WeatherResponse, error) {
 
 		req.Header.Set("User-Agent", "weather-app")
 
-		resp, err := client.Do(req)
+		resp, err := fetchWithRetry(req, client)
 		if err != nil {
 
 			// fallback to stale cache
@@ -105,6 +125,7 @@ func GetCurrentWeather(latitude, longitude float64) (*WeatherResponse, error) {
 
 			return nil, err
 		}
+
 		defer resp.Body.Close()
 
 		// ---------- ERROR HANDLING ----------
@@ -135,6 +156,7 @@ func GetCurrentWeather(latitude, longitude float64) (*WeatherResponse, error) {
 
 		// ---------- SUCCESS ----------
 		var weather WeatherResponse
+
 		if err := json.NewDecoder(resp.Body).Decode(&weather); err != nil {
 			return nil, err
 		}
@@ -160,7 +182,7 @@ func GetCurrentWeather(latitude, longitude float64) (*WeatherResponse, error) {
 // Warmup on startup
 func init() {
 	go func() {
-		time.Sleep(5 * time.Second)
+		time.Sleep(15 * time.Second)
 		_, _ = GetCurrentWeather(52.406822, -1.519693)
 	}()
 }
