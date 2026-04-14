@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"sync"
 	"time"
 
@@ -15,7 +16,7 @@ type WeatherResponse struct {
 }
 
 type WeatherCurrent struct {
-	Temperature float64 `json:"temperature_2m"`
+	Temperature float64 `json:"temp_c"`
 }
 
 type CacheWeather struct {
@@ -62,6 +63,11 @@ func GetCurrentWeather(latitude, longitude float64) (*WeatherResponse, error) {
 		longitude = -1.519693
 	}
 
+	apiKey := os.Getenv("WEATHER_API_KEY")
+	if apiKey == "" {
+		return nil, fmt.Errorf("missing WEATHER_API_KEY")
+	}
+
 	key := cacheKey(latitude, longitude)
 
 	// ---------- CACHE READ ----------
@@ -95,9 +101,10 @@ func GetCurrentWeather(latitude, longitude float64) (*WeatherResponse, error) {
 		}
 
 		url := fmt.Sprintf(
-			"https://api.open-meteo.com/v1/forecast?latitude=%.2f&longitude=%.2f&current=temperature_2m",
-		     latitude,
-		     longitude,
+			"https://api.weatherapi.com/v1/current.json?key=%s&q=%.4f,%.4f",
+			apiKey,
+			latitude,
+			longitude,
 		)
 
 		client := &http.Client{
