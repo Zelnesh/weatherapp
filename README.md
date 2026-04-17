@@ -37,7 +37,7 @@ Rate-limit protection logic
 ______________________
 External APIs
 
-Weather API (Open-Meteo)
+WeatherAPI
 Geocoding API
 IPWho.is (Geolocation)
 
